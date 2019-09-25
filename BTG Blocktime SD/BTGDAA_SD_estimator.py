@@ -66,7 +66,7 @@ BTG_diff = 1/BTG_theor_mean
 BTG_time = 0
 BTG_mean = BTG_theor_mean # expected value
 BTG_solvetime_list = [] # list of total blocktime last n blocks
-BTG_var_list = [] # cumulative variance for last n-blocks
+BTG_var_list = [] # cumulative variance for last n blocks
 BTG_dev_list = [] # standard deviation for last n blocks
 for i in range (log_depth): # initialize tracking arrays
     BTG_solvetime_list.append(i)
@@ -80,6 +80,9 @@ for seeding in range (45): # need 45 block window before activating DAA
     BTG_tip += 1
 
 # thorough run-in for full normal variance to set in
+# 3x 45 block averaging window is probably adequate for simulation, but
+# each 45 blocks have a faint echo of the prior 45 blocks, so 10x 45 is
+# extra-safe for estimating the true variance & SD
 for blocks in range (log_depth + 10*45):
     #find one BTG block
     found = False
@@ -91,7 +94,8 @@ for blocks in range (log_depth + 10*45):
             BTG_tip += 1
             BTG_diff = 1/BTG_target
         BTG_time +=1
-BTG_start = BTG_time
+BTG_start = BTG_time # capturing current simulated time; only used for calculating
+# the mean block time as a sanity check for the sim; should approach BTG_theor_mean
 
 # get initial time lists
 for depth in range (log_depth):
@@ -119,7 +123,8 @@ for blocks in range (1,run_length+1):
         # set solvetimes to prior for n > 0
         BTG_solvetime_list[depth] = BTG_solvetime_list[depth-1] + solvetime
         # add to cumulative variances for n > 0
-        BTG_var_list[depth] += (BTG_theor_mean_list[depth] - BTG_solvetime_list[depth])**2
+        BTG_var_list[depth] += (BTG_theor_mean_list[depth] 
+            - BTG_solvetime_list[depth])**2
     BTG_solvetime_list[0] = solvetime # set solvetime to current for n = 0
     BTG_var_list[0] += (BTG_theor_mean_list[0] - BTG_solvetime_list[0])**2
     
@@ -168,7 +173,7 @@ for blocks in range (1,run_length+1):
                 )
                 + "   Logging in "+filename+"\n"
                 )
-        # truncate to last 45 blocks
+        # truncate chain to last 45 blocks to avoid consuming excess memory
         BTG = BTG[BTG_tip-45:BTG_tip] 
         BTG_tip = 45
 

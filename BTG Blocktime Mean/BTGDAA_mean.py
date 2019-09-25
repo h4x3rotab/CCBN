@@ -7,7 +7,9 @@ import time
 savefile = "BTGDAA_mean_progress.json"
 logfile = "BTGDAA_mean_output.txt"
 reporting_interval = 100000
-run_length = 1000000000
+# interval, in blocks, at which to post status update on screen & save data
+# to file as JSON to reload & continue at next start
+run_length = 10000000000 
 if reporting_interval > run_length: reporting_interval = run_length
 
 def BTGDAA(chain,tip): # Simulated BTG DAA after 2018, Aug 1 (v0.15.1)
@@ -56,7 +58,6 @@ prev_time = 0
 first_time = True
 main_remaining = run_length
 elapsed = 0
-
 
 try: # load from savefile
     with open(savefile,"r") as input_file:
@@ -144,7 +145,7 @@ while main_remaining:
         json.dump(data, output_file)
 
 logtxt = open(logfile,"w")
-logtxt.write("Blocks BTCmean BTGmean\n")
+logtxt.write("Blocks BTGmean ElapsedTime\n")
 logtxt.write(str(BTG_blocks)+" " +
             str((BTG_time)/(BTG_blocks)) + "\n" + 
             str(data)
