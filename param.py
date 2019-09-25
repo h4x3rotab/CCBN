@@ -1,26 +1,27 @@
 # Runtime parameters for CCBNsim.py
 
-DATAFOLDER = "var" # folder target for log files
 #define sim scope 
-SIMRUNS = 1000 # number of times to run sim and add to datatable
-LOG_INTERVAL = 50 # freq of logfile updates to capture stats before end
-# (set LOG_INTERVAL = SIMRUNS to skip updates)
-STATUS_INTERVAL = 10 # freq of status updates on console
+SIMRUNS = 1000 # number of times to run a simulated attack and add to datatable
+LOG_INTERVAL = 50 # freq of logfile updates (in sim runs) to capture stats before 
+# during sim (set LOG_INTERVAL = SIMRUNS to skip updates)
+STATUS_INTERVAL = 10 # freq of status/progress updates ( in sim runs) on console
 
+DATAFOLDER = "var" # folder target for log files
 BLOCKS_PER_RUN = 100 # how deep to run each attack, in mainchain blocks
     # attacks run for this many mainchain blocks, unless already defeated
-RUN_IN = 135 # number of blocks spent in initialization
-    # (to create typical variance before beginning attack sim)
-    # 3 x averaging window (3 * 45) is sufficient for BTG
-BLOCK_TARGET = BLOCKS_PER_RUN + RUN_IN
-MAIN_TARGET = 603.078 # blocktime target for mainchain; BTG = 603.078
-
-
-NOTE_WEIGHTS = [2,3,4] # CCBN notarization weight powers to test
+    # if all simulated scenarios are defeated before 100 blocks pass, the
+    # run stops and goes to the next run. As a result, even deep runs of
+    # BLOCKS_PER_RUN = 1000 will be quick if the CCBN parameters are very weak
+    # and the defense fails in the first 10 blocks. Conversely, if CCBN
+    # params are strong, and the defense does not fail, the sim will run
+    # out the full BLOCKS_PER_RUN for each run, taking more time - this is true
+    # even if only one simulated scenario is strong. One "strong defense" 
+    # scenario will make them all wait for the full depth, so be aware when
+    # batching configurations to analyze
 
 CONFIRMATIONS = 6 # confirmation depth requirement to test
 # Attacker will delay start of notarization until confirmation is met
-MAINCHAIN = 0
+# This simulates attacking an exchange that waits for this many confirmations
 MAC_POWERS = [.75,4] # main and attack chain hashpower multiples to test 
     # example: use 2 to simulate attack with 2X natural network haspower
     # note that elemnet 0 is mainchain
@@ -32,9 +33,12 @@ NOC_TARGETS = [30,60] # Notarychain blocktimes targets
     # ETH = 20... RSK = 30... LTC = 150... BTC = 600
     # for notarycahins, sim assumes fixed difficulty and stable hashrate
     # MAKE SURE you have at least as many NOC_SEEDS as NOC_TARGETS!
+
+NOTE_WEIGHTS = [2,3,4] # CCBN notarization weight powers to test
+
 MAC_SEEDS = [0,1,2,3,4,5,6,7,8,9] # random seeds for mainchains
 NOC_SEEDS = [20,21,22,23,24,25,26,27,28,29] # random seeds for notarychains
-    # nth MC_POWERS uses nth MAC_SEED, nth NOC uses nth NOC_SEED
+    # nth MAC_POWERS uses nth MAC_SEED, nth NOC uses nth NOC_SEED
     # never use same seed for two chains
     # if using > 10 MAC_POWERS or NOC_TARGETS, add extra seeds
     # if trying to replicate results, make sure entire config is
@@ -43,17 +47,17 @@ NOC_SEEDS = [20,21,22,23,24,25,26,27,28,29] # random seeds for notarychains
 
 # Simulation speed considerations:
 # SIMRUNS * BLOCKS_PER_RUN is the number of passes, runtime grows linearly
-# Adding more NOTE_WEIGHTS and CONFIRMATIONS has minor impact; those
-# just add a few extra calculations/storage per run
 # Adding MAC_POWERS has large impact; each power is another blockchain to 
 # run and track, including random check each second per chain
 # Adding NOC_TARGETS also has large impact; there's mininmal tracking on a
-# notarycahin, but each additional one requires an additional random check 
+# notarychain, but each additional chain requires an additional random check 
 # per "second" to simulate block mining/creation
+# Adding more NOTE_WEIGHTS and CONFIRMATIONS has minor impact; those
+# just add a few extra calculations/storage each time a block is found, 
+# HOWEVER, if the  NOTE_WEIGHTS & CONFIRMATIONS make the chain very safe, 
+# runs will take longer as they are unlikely to fail, and so will run the 
+# full BLOCKS_PER_RUN for each pass
 
-NOTARIZATION_RATE = 1  # NOT CURRENTLY IN USE
-# fraction of mainchain blocks to notarize. 
-# if using fractional notarization, make sure code adjusted as noted below
 
 # ============================================================================
 #                       Make no changes below here
@@ -65,6 +69,15 @@ NOC_COUNT = len(NOC_TARGETS) # number of notarychains in the run
 TEST_CONFIGS = MAC_COUNT * NOC_COUNT * NOTE_WEIGHT_COUNT
 MAIN_COUNT = NOC_COUNT * NOTE_WEIGHT_COUNT
 TEST_COUNT = (MAC_COUNT-1) * NOC_COUNT * NOTE_WEIGHT_COUNT
+
+RUN_IN = 135 # number of blocks spent in initialization
+    # (to create typical variance before beginning attack sim)
+    # 3 x averaging window (3 * 45) is sufficient for BTG
+    # this happens at the start of each simrun
+SIMRUN_BLOCK_COUNT = BLOCKS_PER_RUN + RUN_IN
+
+MAIN_TARGET = 603.078 # blocktime target for mainchain; BTG = 603.078
+MAINCHAIN = 0 # when referring to index 0 of a list where 0 = mainchain
 
 # Test State List
 # test_state_list element constants for readability:

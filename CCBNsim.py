@@ -175,7 +175,7 @@ while run_counter < SIMRUNS:
 #  any config can fail any time; must re-calc weights
 #  and compare to mainchain each time.
 # ============================================================================
-    while mac_curr_len[0] < BLOCK_TARGET:
+    while mac_curr_len[0] < SIMRUN_BLOCK_COUNT:
         # tick all notarychains ============================================
         tick_nocs(ts) # find noc blocks & record notarization in mains
         # tick all mainchains being compared ================================== 
