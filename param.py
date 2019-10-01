@@ -2,9 +2,11 @@
 
 #define sim scope 
 SIMRUNS = 1000 # number of times to run a simulated attack and add to datatable
-LOG_INTERVAL = 50 # freq of logfile updates (in sim runs) to capture stats before 
+LOG_INTERVAL = 100 # freq of logfile updates (in sim runs) to capture stats before 
 # during sim (set LOG_INTERVAL = SIMRUNS to skip updates)
-STATUS_INTERVAL = 10 # freq of status/progress updates ( in sim runs) on console
+STATUS_INTERVAL = 10 # freq of status/progress updates (in sim runs) on console
+DETAIL_LOGGING = False # set True to generate detail logs per test config
+TEST_PAIRS = True # set True to calculate odds against pairs of tests
 
 DATAFOLDER = "var" # folder target for log files
 BLOCKS_PER_RUN = 100 # how deep to run each attack, in mainchain blocks
@@ -22,19 +24,21 @@ BLOCKS_PER_RUN = 100 # how deep to run each attack, in mainchain blocks
 CONFIRMATIONS = 6 # confirmation depth requirement to test
 # Attacker will delay start of notarization until confirmation is met
 # This simulates attacking an exchange that waits for this many confirmations
-MAC_POWERS = [.75,4] # main and attack chain hashpower multiples to test 
+MAC_POWERS = [.5,3,6] # main and attack chain hashpower multiples to test 
     # example: use 2 to simulate attack with 2X natural network haspower
     # note that elemnet 0 is mainchain
     # example: if mainchain power is expected to drop by 25% when an attacker
     # buys away all the "market" power, use element 0 = .75
-    # [.5,2] tests when mainchain drops to half power while attacked by 2x normal
+    # example: to test when mainchain drops to half power 
+    # while attacked by 2x normal, use [.5,2] 
+    # example: to test when mainchain drops to 75% power 
+    # versus attacks by 2x and 4x normal, use [.75,2,4] 
     # MAKE SURE you have at least as many MAC_SEEDS as MAC_POWERS!
-NOC_TARGETS = [30,60] # Notarychain blocktimes targets
-    # ETH = 20... RSK = 30... LTC = 150... BTC = 600
+NOC_TARGETS = [30,600] # Notarychain blocktimes targets
+    # Examples, ETH=15, RSK=30, SAFE=60, ZEL=120 LTC=150, BTC=600
     # for notarycahins, sim assumes fixed difficulty and stable hashrate
     # MAKE SURE you have at least as many NOC_SEEDS as NOC_TARGETS!
 
-NOTE_WEIGHTS = [2,3,4] # CCBN notarization weight powers to test
 
 MAC_SEEDS = [0,1,2,3,4,5,6,7,8,9] # random seeds for mainchains
 NOC_SEEDS = [20,21,22,23,24,25,26,27,28,29] # random seeds for notarychains
@@ -44,19 +48,37 @@ NOC_SEEDS = [20,21,22,23,24,25,26,27,28,29] # random seeds for notarychains
     # if trying to replicate results, make sure entire config is
     # replicated, including correlation of seeds to chains
 
+NOTE_WEIGHTS = [4] # CCBN notarization weight powers to test
 
 # Simulation speed considerations:
 # SIMRUNS * BLOCKS_PER_RUN is the number of passes, runtime grows linearly
+
 # Adding MAC_POWERS has large impact; each power is another blockchain to 
 # run and track, including random check each second per chain
+
 # Adding NOC_TARGETS also has large impact; there's mininmal tracking on a
 # notarychain, but each additional chain requires an additional random check 
 # per "second" to simulate block mining/creation
+
 # Adding more NOTE_WEIGHTS and CONFIRMATIONS has minor impact; those
 # just add a few extra calculations/storage each time a block is found, 
 # HOWEVER, if the  NOTE_WEIGHTS & CONFIRMATIONS make the chain very safe, 
 # runs will take longer as they are unlikely to fail, and so will run the 
 # full BLOCKS_PER_RUN for each pass
+
+# TEST_PAIRS, if enabled, examines every possible pair of test cases: both cases 
+# must fail for a Pair to fail, so both test cases must run until both fail.
+# This means fewer failures and longer run times for scenarious that otherwise 
+# have many failures - but in scenarios with few failures, makes little 
+# difference (if all tests already run to full depth, adding analysis of pairs 
+# of tests makes no difference; you go from no failures to not failures.)
+
+# General practice: it's best to run your intended simulation with a low
+# low STATUS_INTERVAL to get a feel for runtime; you can tweak the other parameters
+# and restart. It's also best to start wtih a low SIMRUNS, like 100, to get a
+# quick feel for the results - are you getting zero failures? 100% failures?
+# If so, a long run may not provide useful information. After tweaking for
+# results and run time, set up your longer run with fewer updates and sit back.
 
 
 # ============================================================================
@@ -75,6 +97,8 @@ RUN_IN = 135 # number of blocks spent in initialization
     # 3 x averaging window (3 * 45) is sufficient for BTG
     # this happens at the start of each simrun
 SIMRUN_BLOCK_COUNT = BLOCKS_PER_RUN + RUN_IN
+
+# Contants below enhance code readability
 
 MAIN_TARGET = 603.078 # blocktime target for mainchain; BTG = 603.078
 MAINCHAIN = 0 # when referring to index 0 of a list where 0 = mainchain

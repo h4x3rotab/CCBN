@@ -96,9 +96,11 @@ while run_counter < SIMRUNS:
 # 
 # ============================================================================
 #  middle while loop:
-#    AFTER FIRST ATTACK IS BROADCAST and CONFIRMATIONS have been met
-#  some configs subject to failure; check for test confirmation req. and re-calc
-#  weights as necessary to compare to mainchain
+#    after CONFIRMATIONS have been met and FIRST ATTACK IS BROADCAST 
+#      (but possibly not all attacks have been broadcast)
+#    must find dn_block for each chain where attack has been broadcast
+#    some test configs subject to failure; begin calculating notarychain
+#    weights as necessary to compare to mainchain
 # ============================================================================
 #
     DN_count = TEST_COUNT
@@ -132,11 +134,10 @@ while run_counter < SIMRUNS:
                 mac_curr_len[mac] += 1
                 mac_curr_diff[mac] = (1-(1-1/new_target)**MAC_POWERS[mac])
                 # check for potential reorg & check weights
-                if mac > MAINCHAIN: # if this is an attack check, check lengths
+                if mac > MAINCHAIN: # if this is an attack, check lengths
                     if mac_curr_len[mac] > mac_curr_len[MAINCHAIN]:
                     # if attack chain > mainchain, re-org is possible, 
-                    # must check weights for all tests
-                    # with this mac (the same attack chain)
+                    # must check weights for all tests using this mac
                         for test in test_state_list[mac*MAIN_COUNT:(mac+1)*MAIN_COUNT]:
                             if not test[FAILED]: # skip tests that failed already
                                 main_weight = calc_weight (
@@ -171,10 +172,11 @@ while run_counter < SIMRUNS:
 #
 # ============================================================================
 #  last while loop:
-#    AFTER ALL ATTACKS ARE BROADCAST and ALL CONFIRMATIONS have been met
-#  any config can fail any time; must re-calc weights
-#  and compare to mainchain each time.
+#    after AFTER ALL ATTACKS HAVE BEEN BROADCAST and dn_block is already set
+#  any test config can fail any time; must re-calc weights
+#  and compare to mainchain each time
 # ============================================================================
+#
     while mac_curr_len[0] < SIMRUN_BLOCK_COUNT:
         # tick all notarychains ============================================
         tick_nocs(ts) # find noc blocks & record notarization in mains
@@ -198,8 +200,7 @@ while run_counter < SIMRUNS:
                 if mac > MAINCHAIN: # if this is an attack, check lengths
                     if mac_curr_len[mac] > mac_curr_len[MAINCHAIN]:
                     # if attack chain > mainchain, re-org is possible, 
-                    # must check weights for all tests
-                    # with matching mac
+                    # must check weights for all tests using this mac
                         for test in test_state_list[mac*MAIN_COUNT:(mac+1)*MAIN_COUNT]:
                             if not test[FAILED]: # skip tests that failed already
                                 main_weight = calc_weight (
@@ -227,27 +228,6 @@ while run_counter < SIMRUNS:
                                         pair[PAIR_FAILED]+=1
                                         if pair[PAIR_FAILED]==2:
                                             pair[PAIR_FAIL_DEPTH][depth] += 1
-                                    #  debuglog.write("Failed at "
-                                    #     +str(mac_curr_len[MAINCHAIN]-ffb)
-                                    #     +", main_weight: "+str(main_weight)
-                                    #     +", attack_weight: "+str(attack_weight)+"\n\n")
-                                    # calc_weight_linear_metering_list (
-                                    #     mac_list[MAINCHAIN],
-                                    #     mac_curr_len[MAINCHAIN],
-                                    #     ffb,
-                                    #     test[NOC_X],
-                                    #     test[DN_BLOCK],
-                                    #     noc_curr_len[test[NOC_X]],
-                                    #     NOTE_WEIGHTS[test[WEIGHT_X]])
-                                    # calc_weight_linear_metering_list (
-                                    #     mac_list[mac],
-                                    #     mac_curr_len[mac],
-                                    #     ffb,
-                                    #     test[NOC_X],
-                                    #     test[DN_BLOCK],
-                                    #     noc_curr_len[test[NOC_X]],
-                                    #     NOTE_WEIGHTS[test[WEIGHT_X]])
-                                    # debuglog.flush() 
         ts +=1
         # 1 SECOND HAS PASSED; check for live tests remaining
         if live_tests == 0: break # jump to next run if all have failed
@@ -255,19 +235,13 @@ while run_counter < SIMRUNS:
     run_counter +=1
     # THIS RUN FINISHED; display timing info & estimates, RECORD OUTPUT
     # LOG FAIL_DEPTH FOR EACH TEST
-    if not (run_counter == SIMRUNS):
-        if run_counter%STATUS_INTERVAL == 0:
-            CCBNlogger.progress_update(run_counter)
-        if run_counter%LOG_INTERVAL == 0:
-            CCBNlogger.status_output(test_state_list, run_counter)
-    # CCBNlogger.detail_log(run_counter, (mac_curr_len[0]-RUN_IN), test_state_list)
-    # uncomment previous line to enable detail logger with file per test combo
+    if run_counter%STATUS_INTERVAL == 0:
+        CCBNlogger.progress_update(run_counter)
+    if run_counter%LOG_INTERVAL == 0:
+        CCBNlogger.status_output(test_state_list, run_counter)
+    if DETAIL_LOGGING:
+        CCBNlogger.detail_log(run_counter, (mac_curr_len[0]-RUN_IN), test_state_list)
 CCBNlogger.final_output(test_state_list, test_pairs)
-#for noc in range(NOC_COUNT):
-#    debuglog.write("\n"+str(noc)+" "+str(NOC_TARGETS[noc])+"\n")
-#    for block in noc_list[noc]:
-#        debuglog.write(str(block).strip('[]')+"\n")
-debuglog.close()
 
 #=============================================================================
 #  EXECUTION GOES BACK FOR NEXT RUN UNTIL run_counter > SIMRUNS

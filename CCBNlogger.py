@@ -29,23 +29,27 @@ def initialize (test_state_list):
             + "\n (first is mainchain post-attack power)" + "\n"
             + "Notarychain blocktime targets: " + str(NOC_TARGETS) + "\n"
             + "CCBN weighting powers: " + str(NOTE_WEIGHTS) + "\n"
-            + "Confirmation requirements: " + str(CONFIRMATIONS) + "\n"
+            + "Confirmation requirement: " + str(CONFIRMATIONS) + "\n"
             + "Max block depth per run: " + str(BLOCKS_PER_RUN)  + "  "
             + "Simulation Runs: " + str(SIMRUNS) + "\n")
     logtxt.write(out)
     print(out)
-    out = ("Mainchain Seeds: " + str(MAC_SEEDS) 
-        + "\nNotarychain Seeds:" + str(NOC_SEEDS) + "\n")
+    out = ("Detail Logging: " + str(DETAIL_LOGGING) + 
+        "  Paired Analysis: " + str(TEST_PAIRS) +
+        "\nMainchain Seeds: " + str(MAC_SEEDS) +
+        "\nNotarychain Seeds:" + str(NOC_SEEDS) + "\n")
     logtxt.write(out + "\n")
     print(out)
     outcsv = "AttHash, Conf, Weight, NChain, Defeats, Defeat%, MDepth"
     for x in range(BLOCKS_PER_RUN + 1):
         outcsv += "," + str(x)
     logcsv.write(outcsv + "\n")
-    # ==================== FIXIT ==========================
-    for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
-        myfilename = os.path.normpath(targetpath +"/"+ test[FILENAME])
-        test[FILEOBJECT] = open(myfilename + ".txt","w")
+    if (DETAIL_LOGGING):
+        for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
+            myfilename = os.path.normpath(targetpath +"/"+ test[FILENAME])
+            test[FILEOBJECT] = open(myfilename + ".txt","w")
+        for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
+            test[FILEOBJECT].write("Run, FailHeight, FailWeight (0 = no failure)\n")
     print("===================================================================")
     print("=                             STARTING                            =")
     print("===================================================================")
@@ -54,7 +58,7 @@ def initialize (test_state_list):
     print(out)
 
 def progress_update (run_counter):
-    global start
+    start
     now=time.time()
     done=run_counter/SIMRUNS
     elapsed=now-start
@@ -62,16 +66,15 @@ def progress_update (run_counter):
             int(elapsed/done-elapsed),"to go (",int((elapsed/done-elapsed)/60),
             "minutes or %.2f" % ((elapsed/done-elapsed)/(60*60)),
             "hours or %.2f" % ((elapsed/done-elapsed)/(24*60*60)),"days.)\n")
-
-def detail_log_single (run_counter, height, test):
-    test[FILEOBJECT].write(
-        str(run_counter) + "," +
-        str(test[FAILED]) + "," +"\n")
            
 def detail_log (run_counter, height, test_state_list):
     # ==================== FIXIT ==========================
     for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
-        detail_log_single(run_counter, height, test)
+        test[FILEOBJECT].write(
+        str(run_counter) + ", " +
+        str(height) + ", " +
+        str(test[FAILED]) + "\n")
+
 
 def status_output (test_state_list, run_counter):
     # ==================== FIXIT ==========================
@@ -103,6 +106,9 @@ def status_output (test_state_list, run_counter):
         print(out) 
         logtxt.write(out + "\n")
     logtxt.flush()
+    if (DETAIL_LOGGING):
+        for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
+            test[FILEOBJECT].flush()
 
 def final_output (test_state_list, test_pairs):
     out = ("\n=======================================================\n"
@@ -161,20 +167,22 @@ def final_output (test_state_list, test_pairs):
         logcsv.write(outcsv + "\n")
     outcsv = ("\n\nOutput file: " + str(filename) + " in txt and csv format.\n\n"
         + str(MAC_POWERS) + ", Attack hashpower multiples" 
-        + "\n (first is mainchain post-attack power)" + "\n"
-        + str(NOC_TARGETS) + ", Notarychain blocktime targets" + "\n"
-        + str(NOTE_WEIGHTS) + ", CCBN weighting powers" + "\n"
-        + str(CONFIRMATIONS) + ", Confirmation requirements" + "\n"
-        + str(BLOCKS_PER_RUN) + ", Max block depth per run" + "\n"
-        + str(SIMRUNS)+ ", Simulation Runs" + "\n")
+        + "\n (first is mainchain post-attack power)\n"
+        + str(NOC_TARGETS) + ", Notarychain blocktime targets\n"
+        + str(NOTE_WEIGHTS) + ", CCBN weighting powers\n"
+        + str(CONFIRMATIONS) + ", Confirmation requirement\n"
+        + str(BLOCKS_PER_RUN) + ", Max block depth per run\n"
+        + str(SIMRUNS) + ", Simulation Runs\n"
+        + str(DETAIL_LOGGING) + ", Detail Logging\n"  
+        + str(TEST_PAIRS) + ", Paired Analysis\n" 
+        + str(MAC_SEEDS) + ",Mainchain Seeds\n" 
+        + str(NOC_SEEDS) + ",Notarychain Seeds\n"
+        )
     logcsv.write(outcsv)
-
-
 
     print("===================================================================")
     print("=                            FINISHED                             =")
     print("===================================================================")
-
 
     # ============================================================================
     
@@ -187,7 +195,8 @@ def final_output (test_state_list, test_pairs):
     logtxt.write(out + "\n")
     print(out)
     # ==================== FIXIT ==========================
-    for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
-        test[FILEOBJECT].close()
+    if (DETAIL_LOGGING):
+        for test in test_state_list[MAIN_COUNT::]: # skips the mainchain, iterates the tests
+            test[FILEOBJECT].close()
     logtxt.close()
     logcsv.close()

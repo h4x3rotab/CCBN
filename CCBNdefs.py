@@ -6,8 +6,6 @@ import math
 import os
 from itertools import combinations
 
-debuglog = open("debug.txt","w")
-
 # ============================================================================
 # Set runtime parameters in param.py to set sim scope
 
@@ -108,7 +106,7 @@ for mac in range(MAC_COUNT):
             for maxdepth in range(BLOCKS_PER_RUN+1):
                 this[FAIL_DEPTH].append(0) # add buckets for all fail depths
             test_state_list.append(this)
-# PARSING NOTE FOR test_state_list:
+# PARSING NOTES FOR test_state_list:
 # test_state_list[:MAIN_COUNT:] <- this slice is only states for mainchains
 #       there is one state for each parameter combo with mainchain
 # test_state_list[MAIN_COUNT::] <- this slice is only states for attack chains
@@ -119,7 +117,7 @@ for mac in range(MAC_COUNT):
 # test_pairs - aggregator for combined pairs of tests
 # the combo fails if either fails
 test_pairs = [] 
-if NOC_COUNT > 1:
+if (TEST_PAIRS) and (NOC_COUNT > 1):
     pairs = combinations(test_state_list[MAIN_COUNT::],2)
     for pair in pairs:
         if pair[0][MAC_X]==pair[1][MAC_X]:
@@ -182,21 +180,22 @@ def tick_nocs(ts):
                         mac_list[mac][note][noc+3]=noc_curr_len[noc]
                     mac_recording_queue[mac][noc].clear()
 
-def tick_nocs_pre_broadcast(ts): # no notes for attack chain
+def tick_nocs_pre_broadcast(ts): # no notarizing for attack chains
     for noc in range(NOC_COUNT):
         if noc_random[noc].random() < noc_curr_diff[noc]:
-            # block was found: add to notary chain
+            # block was found: add to notarychain
             noc_list[noc].append([
                 ts
                 #,NOC_TARGETS[noc]
                 #,(ts-noc_list[noc][noc_curr_len[noc]-1][0])
                 ])
             noc_curr_len[noc]+=1
-            # record queued notes for this noc in mainchain
-            if mac_recording_queue[MAINCHAIN][noc]:
-                for note in mac_recording_queue[MAINCHAIN][noc]:
-                    mac_list[MAINCHAIN][note][noc+3]=noc_curr_len[noc]
-                mac_recording_queue[MAINCHAIN][noc].clear()
+            # record queued notes for this noc in mainchain only
+            mac = MAINCHAIN
+            if mac_recording_queue[mac][noc]:
+                for note in mac_recording_queue[mac][noc]:
+                    mac_list[mac][note][noc+3]=noc_curr_len[noc]
+                mac_recording_queue[mac][noc].clear()
 
 def BTGDAA(chain,tip): # Simulated BTG DAA after 2018, Aug 1 (v0.15.1)
     # chain[n] = list of blocks in form:
@@ -233,9 +232,11 @@ def BTGDAA(chain,tip): # Simulated BTG DAA after 2018, Aug 1 (v0.15.1)
     new_target = 27888414/(sum_of_inv_diffs*t)
     return new_target
 
-# calc_weight_SD_metering meter by SD after delayed recognition
 def calc_weight(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
-# DNblock is the notariztion blockheight where metering begins
+# dn_block is the notarization blockheight where metering begins
+# before dn_block, each notarization weighted on height in notarycahin
+# after dn_block, heights are delayed and recognized based after 
+#      blocks pass equal to Mean + 2 x Stand Deviation of mainchain
     chain_weight = 0
     note_record = 3 + noc # index of the notarization for this noc
     noc_target = NOC_TARGETS[noc]
@@ -265,67 +266,56 @@ def calc_weight(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
                     continue
                 else: 
                     break
-    return chain_weight
+    return int(chain_weight)
 
-# =============================================================
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# # =============================================================
 # code below not in use
 
-# calc_weight_SD_metering_with_logging meter by SD after delayed recognition
-def calc_weight_SD_metering_with_logging(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
-# DNblock is the notariztion blockheight where metering begins
-    chain_weight = 0
-    note_record = 3 + noc # index of the notarization for this noc
-    noc_target = NOC_TARGETS[noc]
-    depth=0
-    last_depth=0
-    dn_block_depth = (noc_tip - dn_block + 1)
-    log_list = []
-    for block in chain[ffb:tip]: 
-        log_list.append(block[note_record])
-    debuglog.write(str(log_list)+"\n")
-    debuglog.write("note_weight: "+str(note_weight)
-        +", note_record: "+str(note_record)+"\n"
-        +"dn_block: "+str(dn_block)
-        +", dn_block_depth: "+str(dn_block_depth)
-        +", tip: "+str(noc_tip)+"\n"
-        +"n\tRec\tRaw\tMet\tDep\tWeight\n")
-    n = 0 # metering counter
-    for block in chain[ffb+1:tip]: 
-        record = block[note_record]
-        debuglog.write(str(n)+"\t"+str(record)+"\t")
-        if record:
-            depth = (noc_tip - record + 1)
-            debuglog.write(str(depth)+"\t")
-            if record < dn_block: # before dn_block, recognize normally
-                chain_weight += depth**note_weight
-                debuglog.write("pre\t"+str(depth)+"\t"+str(chain_weight)+"\n")
-                continue
-            elif last_depth == 0: # first note at dn_block, recognize normally
-                chain_weight += depth**note_weight
-                debuglog.write("1st\t"+str(depth)+"\t"+str(chain_weight)+"\n")
-                last_depth = depth
-                continue
-            else: # otherwise, metering applies
-                n += 1
-                min_blocks_since_dn =  BTG_MEAN_PLUS_2SD[n]//noc_target
-                if dn_block_depth - depth < min_blocks_since_dn:
-                    depth = dn_block_depth - min_blocks_since_dn
-                debuglog.write(str(dn_block_depth-min_blocks_since_dn)
-                    +"\t"+str(depth)+"\t")
-                if depth > 0:
-                    chain_weight += depth**note_weight
-                    debuglog.write(str(chain_weight)+"\n")
-                    last_depth = depth
-                    continue
-                else: 
-                    debuglog.write("\n")
-                    break
-    debuglog.write(str(chain_weight)+"\n\n")
-    debuglog.flush()
-    return chain_weight
-
-
-# calc_weight_naive naive weight
+# calc_weight_naive - naive weighting formula
 def calc_weight_naive(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
     chain_weight = 0
     note_record = 3 + noc # index of the notarization for this noc
@@ -336,7 +326,8 @@ def calc_weight_naive(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
             chain_weight += depth**note_weight
     return chain_weight
 
-# calc_weight_delayed_recognition weight with 1-block delayed recognition
+# calc_weight_delayed_recognition - naive weight with 1-block delayed recognition
+# delayed recognition prevents abuse of CCBN for Selfish Mining with gamma=1
 def calc_weight_delayed_recognition(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
     chain_weight = 0
     note_record = 3 + noc # index of the notarization for this noc
@@ -345,48 +336,6 @@ def calc_weight_delayed_recognition(chain, tip, ffb, noc, dn_block, noc_tip, not
         if record:
             depth = noc_tip - record + 1
             chain_weight += depth**note_weight
-    return chain_weight
-
-# calc_weight_linear_metering_list weight with linear metering after delayed recognition
-def calc_weight_linear_metering_list(chain, tip, ffb, noc, dn_block, noc_tip, note_weight):
-# DNblock is the notariztion blockheight where metering begins
-    chain_weight = 0
-    note_record = 3 + noc # index of the notarization for this noc
-    depth=0
-    last_depth=0
-    metered_pace=round((1.15*MAIN_TARGET)//NOC_TARGETS[noc])
-    debuglog.write("dn_block: "+str(dn_block)+" metered_pace: " 
-        + str(metered_pace) + "\n")
-    record_list = []
-    for block in chain[ffb:tip]: 
-        record_list.append(block[note_record])
-    debuglog.write(str(record_list)+"\n")
-    # delay by one recording:
-    record_list.pop(0) 
-    # check for recording after DN block time & delay all but first:
-    for n in range (len(record_list)):
-        if record_list[n] < dn_block :
-            last_depth = record_list[n]
-            continue
-        elif last_depth == 0: 
-            last_depth = record_list[n]
-            continue
-        else:
-            if (record_list[n] - record_list[n-1]) < metered_pace:
-                record_list[n] = record_list[n-1] + metered_pace
-            last_depth = record_list[n]
-    debuglog.write(str(record_list)+"\n")
-    # convert to depths:
-    for note in range(len(record_list)):
-        record_list[note] = noc_tip - record_list[note] +1
-    debuglog.write(str(record_list)+"\n")
-    for note in record_list:
-        if note > 0 :
-            chain_weight += note**note_weight
-            debuglog.write(str(note**note_weight)+",")
-        else: break
-    debuglog.write(str(chain_weight)+"\n\n")
-    debuglog.flush()
     return chain_weight
     
 # calc_weight_linear_metering weight with linear metering after delayed recognition
